@@ -1,8 +1,6 @@
-name = UbercartCoinbase
+name = Coinbase
 description = Process Bitcoin payments with Coinbase.
 dependencies[] = uc_payment
-dependencies[] = uc_credit
 package = Ubercart - payment
-core = 6.x
-php = 5.0
-version = "6.x-1.0"
+core = 7.x
+version = "7.x-1.0"

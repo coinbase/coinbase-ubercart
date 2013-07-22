@@ -1,0 +1,29 @@
+<?php
+
+function uc_coinbase_uc_payment_method() {
+  $methods['coinbase'] = array(
+    'id' => 'coinbase_bitcoin',
+    'name' => t('Coinbase bitcoin payments'),
+    'title' => t('Bitcoin'),
+    'desc' => t('Accept Bitcoin payments with Coinbase.'),
+    'callback' => 'uc_payment_method_coinbase',
+    'weight' => 1,
+    'checkout' => FALSE,
+    'no_gateway' => TRUE,
+  );
+  return $methods;
+}
+
+function uc_payment_method_coinbase($op, $order) {
+  switch ($op)  {
+    case 'settings':
+      $form['uc_coinbase_api_key'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Coinbase API KEY'),
+        '#description' => t('You can find your API key at <a href="https://coinbase.com/account/integrations">https://coinbase.com/account/integrations</a>'),
+        '#default_value' => variable_get('uc_coinbase_api_key'),
+      );
+      return $form;
+  }
+
+}
