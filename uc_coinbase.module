@@ -1,12 +1,15 @@
 <?php
 
+require_once(dirname(__FILE__). "/coinbase-php/lib/Coinbase.php");
+
 function uc_coinbase_uc_payment_method() {
   $methods['coinbase'] = array(
     'id' => 'coinbase_bitcoin',
-    'name' => t('Coinbase bitcoin payments'),
+    'name' => t('Bitcoin (Coinbase)'),
     'title' => t('Bitcoin'),
     'desc' => t('Accept Bitcoin payments with Coinbase.'),
     'callback' => 'uc_payment_method_coinbase',
+    'redirect' => 'uc_coinbase_form',
     'weight' => 1,
     'checkout' => FALSE,
     'no_gateway' => TRUE,
@@ -26,4 +29,52 @@ function uc_payment_method_coinbase($op, $order) {
       return $form;
   }
 
+}
+
+function uc_coinbase_form($form, &$form_state, $order) {
+
+  $title = 'Order #' . $order->order_id;
+  $custom = $order->order_id;
+  $price = uc_currency_format($order->order_total, FALSE, FALSE, '.');
+  $currency = $order->currency;
+
+  $coinbase = new Coinbase(variable_get('uc_coinbase_api_key'));
+  $response = $coinbase->createButton($title, $price, $currency, $custom);
+
+  $form['#action'] = 'https://coinbase.com/checkouts/' . $response->button->code;
+  $form['#method'] = 'get';
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit Order'),
+  );
+  return $form;
+}
+
+function uc_coinbase_menu() {
+
+  // Success page
+  $items['uc_coinbase/success'] = array(
+    'title' => 'Bitcoin payment successful',
+    'page callback' => 'uc_coinbase_success',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_coinbase.pages.inc',
+  );
+  // Cancel page
+  $items['uc_coinbase/cancel'] = array(
+    'title' => 'Bitcoin payment canceled',
+    'page callback' => 'uc_coinbase_cancel',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_coinbase.pages.inc',
+  );
+  // Callback page
+  $items['uc_coinbase/callback'] = array(
+    'title' => 'Bitcoin payment processing...',
+    'page callback' => 'uc_coinbase_callback',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+    'file' => 'uc_coinbase.pages.inc',
+  );
+  return $items;
 }
