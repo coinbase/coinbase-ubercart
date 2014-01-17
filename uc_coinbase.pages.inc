@@ -4,7 +4,6 @@ require_once(dirname(__FILE__). "/coinbase-php/lib/Coinbase.php");
 
 function uc_coinbase_success() {
 
-  $custom = unserialize(base64_decode($_GET['order']['custom']));
   $order_id = $custom['order_id'];
   if(!isset($_SESSION['cart_order']) || intval($_SESSION['cart_order']) != $order_id) {
     // Wrong order ID - something has gone wrong, but payment might have gone through
@@ -55,11 +54,11 @@ function uc_coinbase_callback() {
     die("Malformed Coinbase callback (invalid URL)");
   }
 
-  $tokens = variable_get('uc_coinbase_oauth_tokens');
+  $tokens = unserialize(variable_get('uc_coinbase_oauth_tokens'));
   $clientId = variable_get('uc_coinbase_oauth_clientid');
   $clientSecret = variable_get('uc_coinbase_oauth_clientsecret');
   $oauth = new Coinbase_OAuth($clientId, $clientSecret, "");
-  $coinbase = new Coinbase($oauth, unserialize($tokens));
+  $coinbase = new Coinbase($oauth, $tokens);
 
   // 2. Download order data and verify
   $postBody = json_decode(file_get_contents("php://input"));
@@ -68,7 +67,15 @@ function uc_coinbase_callback() {
   }
 
   $cb_order_id = $postBody->order->id;
-  $order = $coinbase->getOrder($cb_order_id);
+  try {
+    $order = $coinbase->getOrder($cb_order_id);
+  } catch (Coinbase_TokensExpiredException $e) {
+    // Refresh tokens
+    $tokens = $oauth->refreshTokens($tokens);
+    variable_set('uc_coinbase_oauth_tokens', serialize($tokens));
+    $coinbase = new Coinbase($oauth, $tokens);
+    $order = $coinbase->getOrder($cb_order_id);
+  }
   $custom = unserialize(base64_decode($order->custom));
   if ($custom['secret'] !== sha1($secret)) {
     die("Malformed Coinbase callback (invalid order custom param)");

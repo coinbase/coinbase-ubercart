@@ -103,10 +103,11 @@ function uc_coinbase_form($form, &$form_state, $order) {
 
   $tokens = variable_get('uc_coinbase_oauth_tokens');
   if ($tokens == NULL) {
-    drupal_set_message(t('Sorry, but your payment could not be processed. The Coinbase plugin has not been set up.'));
+    drupal_set_message(t('Sorry, but your payment could not be processed. The Coinbase plugin has not been set up. Please contact the website administrator.'));
     drupal_goto('cart');
     return;
   }
+  $tokens = unserialize($tokens);
 
   $secret = variable_get('uc_coinbase_secret');
   if ($secret === NULL) {
@@ -135,9 +136,19 @@ function uc_coinbase_form($form, &$form_state, $order) {
 
   $clientId = variable_get('uc_coinbase_oauth_clientid');
   $clientSecret = variable_get('uc_coinbase_oauth_clientsecret');
-  $oauth = new Coinbase_OAuth($clientId, $clientSecret, "");
-  $coinbase = new Coinbase($oauth, unserialize($tokens));
-  $response = $coinbase->createButton($title, $price, $currency, $custom, $params);
+  $oauth = new Coinbase_OAuth($clientId, $clientSecret, variable_get('uc_coinbase_oauth_last_redirect_url'));
+  $coinbase = new Coinbase($oauth, $tokens);
+  
+  try {
+    $response = $coinbase->createButton($title, $price, $currency, $custom, $params);
+  } catch (Coinbase_TokensExpiredException $e) {
+    // Refresh tokens
+    $tokens = $oauth->refreshTokens($tokens);
+    variable_set('uc_coinbase_oauth_tokens', serialize($tokens));
+    // Try again
+    $coinbase = new Coinbase($oauth, $tokens);
+    $response = $coinbase->createButton($title, $price, $currency, $custom, $params);
+  }
 
   $form['#action'] = 'https://coinbase.com/checkouts/' . $response->button->code;
   $form['#method'] = 'get';
