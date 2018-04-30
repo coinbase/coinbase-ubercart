@@ -1,9 +1,0 @@
-<?php
-
-/**
- * Uninstalls all variables set by the Coinbase plugin.
- */
-function uc_coinbase_uninstall() {
-  // Delete related variables all at once.
-  db_query("DELETE FROM {variable} WHERE name LIKE 'uc_coinbase_%%'");
-}
